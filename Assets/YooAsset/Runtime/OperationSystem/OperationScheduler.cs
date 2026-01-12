@@ -104,7 +104,6 @@ namespace YooAsset
             foreach (var operation in _newList)
             {
                 operation.AbortOperation();
-                operation.FinishOperation(); //注意：强制收尾，确保Task能完成
             }
             _newList.Clear();
 
@@ -112,7 +111,6 @@ namespace YooAsset
             foreach (var operation in _operations)
             {
                 operation.AbortOperation();
-                operation.FinishOperation(); //注意：强制收尾，确保Task能完成
             }
             _operations.Clear();
         }

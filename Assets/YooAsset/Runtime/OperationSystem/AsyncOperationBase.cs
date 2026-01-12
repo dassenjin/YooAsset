@@ -244,12 +244,15 @@ namespace YooAsset
                 Error = "user abort";
                 YooLogger.Warning($"Async operation {this.GetType().Name} has been aborted !");
             }
+
+            //注意：强制收尾，确保Task能完成
+            FinishOperation();
         }
 
         /// <summary>
         /// 强制结束异步任务
         /// </summary>
-        internal void FinishOperation()
+        private void FinishOperation()
         {
             if (IsFinish == false)
             {
@@ -307,12 +310,7 @@ namespace YooAsset
                 // 当执行次数用完时
                 runCount--;
                 if (runCount <= 0)
-                {
-                    Status = EOperationStatus.Failed;
-                    Error = $"Operation {this.GetType().Name} failed to wait for async complete !";
-                    YooLogger.Error(Error);
                     break;
-                }
             }
         }
 
@@ -341,9 +339,6 @@ namespace YooAsset
         /// </summary>
         public void WaitForAsyncComplete()
         {
-            if (IsDone)
-                return;
-
             //TODO 防止异步操作被挂起陷入无限死循环！
             // 例如：文件解压任务或者文件导入任务！
             if (Status == EOperationStatus.None)
@@ -354,7 +349,19 @@ namespace YooAsset
             if (IsWaitForAsyncComplete == false)
             {
                 IsWaitForAsyncComplete = true;
-                InternalWaitForAsyncComplete();
+                
+                if (IsDone == false)
+                    InternalWaitForAsyncComplete();
+                
+                if (IsDone == false)
+                {
+                    Status = EOperationStatus.Failed;
+                    Error = $"Operation {this.GetType().Name} failed to wait for async complete !";
+                    YooLogger.Error(Error);
+                }
+
+                //注意：强制收尾，确保Task能完成
+                FinishOperation();
             }
         }
 
