@@ -155,9 +155,19 @@ namespace YooAsset
             if (_childs == null)
                 _childs = new List<AsyncOperationBase>(10);
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || DEBUG
+            if (child == null)
+                throw new YooInternalException("The child node is null !");
+
+            if (ReferenceEquals(child, this))
+                throw new YooInternalException("The child node cannot be itself !");
+
             if (_childs.Contains(child))
                 throw new YooInternalException($"The child node {child.GetType().Name} already exists !");
+
+            // 禁止形成环依赖
+            if (WouldCreateCycle(child))
+                throw new YooInternalException($"AddChildOperation would create a cycle : {this.GetType().Name} -> {child.GetType().Name}");
 #endif
 
             _childs.Add(child);
@@ -171,7 +181,10 @@ namespace YooAsset
             if (_childs == null)
                 return;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || DEBUG
+            if (child == null)
+                throw new YooInternalException("The child node is null !");
+
             if (_childs.Contains(child) == false)
                 throw new YooInternalException($"The child node {child.GetType().Name} not exists !");
 #endif
@@ -349,10 +362,10 @@ namespace YooAsset
             if (IsWaitForAsyncComplete == false)
             {
                 IsWaitForAsyncComplete = true;
-                
+
                 if (IsDone == false)
                     InternalWaitForAsyncComplete();
-                
+
                 if (IsDone == false)
                 {
                     Status = EOperationStatus.Failed;
@@ -414,6 +427,39 @@ namespace YooAsset
             float m = UnityEngine.Mathf.FloorToInt(spawnTime / 60f - h * 60f);
             float s = UnityEngine.Mathf.FloorToInt(spawnTime - m * 60f - h * 3600f);
             return h.ToString("00") + ":" + m.ToString("00") + ":" + s.ToString("00");
+        }
+        private bool WouldCreateCycle(AsyncOperationBase child)
+        {
+            const int maxVisited = 4096;
+            var stack = new Stack<AsyncOperationBase>();
+            var visited = new HashSet<AsyncOperationBase>();
+            stack.Push(child);
+
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+                if (node == null)
+                    continue;
+
+                if (visited.Add(node) == false)
+                    continue;
+
+                if (visited.Count > maxVisited)
+                    throw new YooInternalException("Child operation graph is too large, cycle check aborted !");
+
+                if (ReferenceEquals(node, this))
+                    return true;
+
+                if (node._childs == null)
+                    continue;
+
+                for (int i = 0; i < node._childs.Count; i++)
+                {
+                    stack.Push(node._childs[i]);
+                }
+            }
+
+            return false;
         }
 
         internal DebugOperationInfo GetDebugOperationInfo()

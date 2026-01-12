@@ -97,6 +97,8 @@ namespace YooAsset
         /// </summary>
         public static void DestroyAll()
         {
+            YooLogger.Log("Operation system destroy all !");
+
             // 清空所有调度器
             foreach (var scheduler in _schedulerList)
             {
@@ -177,7 +179,7 @@ namespace YooAsset
             }
 
             // 严格模式：非默认包裹必须先创建调度器
-            throw new YooInternalException($"Package scheduler not found: {packageName}. Please call YooAssets.CreatePackage() first!");
+            throw new YooInternalException($"Operation scheduler not found: {packageName}. Please call YooAssets.CreatePackage() first!");
         }
 
         #region 调试信息

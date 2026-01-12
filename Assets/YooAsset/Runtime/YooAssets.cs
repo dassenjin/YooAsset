@@ -59,6 +59,7 @@ namespace YooAsset
                 _driver.AddComponent<RemoteDebuggerInRuntime>();
 #endif
 
+                // 初始化异步操作系统
                 OperationSystem.Initialize();
             }
         }
@@ -75,8 +76,8 @@ namespace YooAsset
                 if (_driver != null)
                     GameObject.Destroy(_driver);
 
-                // 终止并清空所有包裹的异步操作
-                ClearAllPackageOperation();
+                // 销毁异步操作系统
+                OperationSystem.DestroyAll();
 
                 // 卸载所有AssetBundle
                 AssetBundle.UnloadAllAssetBundles(true);
@@ -95,18 +96,6 @@ namespace YooAsset
             {
                 OperationSystem.Update();
             }
-        }
-
-        /// <summary>
-        /// 终止并清空所有包裹的异步操作
-        /// </summary>
-        internal static void ClearAllPackageOperation()
-        {
-            foreach (var package in _packages)
-            {
-                OperationSystem.ClearPackageOperation(package.PackageName);
-            }
-            OperationSystem.DestroyAll();
         }
 
         /// <summary>
