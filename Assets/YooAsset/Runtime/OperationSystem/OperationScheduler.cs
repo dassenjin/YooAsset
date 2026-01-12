@@ -41,9 +41,6 @@ namespace YooAsset
         {
             _newList.Add(operation);
             operation.StartOperation();
-
-            // 通知开始回调
-            OperationSystem.InvokeStartCallback(PackageName, operation);
         }
 
         /// <summary>
@@ -58,31 +55,29 @@ namespace YooAsset
                 if (operation.IsFinish)
                 {
                     _operations.RemoveAt(i);
-
-                    // 通知完成回调
-                    OperationSystem.InvokeFinishCallback(PackageName, operation);
                 }
             }
 
             // 添加新增的异步操作
             if (_newList.Count > 0)
             {
-                bool sorting = false;
-                foreach (var operation in _newList)
-                {
-                    if (operation.Priority > 0)
-                    {
-                        sorting = true;
-                        break;
-                    }
-                }
-
                 _operations.AddRange(_newList);
                 _newList.Clear();
+            }
 
-                // 重新排序优先级
-                if (sorting)
-                    _operations.Sort();
+            // 检测是否需要执行排序
+            bool isDirty = false;
+            foreach (var operation in _operations)
+            {
+                if (operation.IsDirty)
+                {
+                    operation.IsDirty = false;
+                    isDirty = true;
+                }
+            }
+            if (isDirty)
+            {
+                _operations.Sort();
             }
 
             // 更新进行中的异步操作

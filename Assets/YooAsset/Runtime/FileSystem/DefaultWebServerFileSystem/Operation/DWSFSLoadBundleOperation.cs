@@ -91,7 +91,7 @@ namespace YooAsset
                 _steps = ESteps.Done;
                 Status = EOperationStatus.Failed;
                 Error = "WebGL platform not support sync load method !";
-                UnityEngine.Debug.LogError(Error);
+                YooLogger.Error(Error);
             }
         }
     }

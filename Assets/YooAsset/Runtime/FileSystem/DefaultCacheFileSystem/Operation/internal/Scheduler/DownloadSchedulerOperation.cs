@@ -119,23 +119,16 @@ namespace YooAsset
         }
 
         /// <summary>
-        /// 中止所有下载任务
-        /// </summary>
-        public void AbortAll()
-        {
-            foreach (var valuePair in _downloaders)
-            {
-                valuePair.Value.AbortOperation();
-            }
-            _downloaders.Clear();
-        }
-
-        /// <summary>
-        /// 释放资源
+        /// 释放下载资源
         /// </summary>
         public void Dispose()
         {
-            AbortAll();
+            foreach (var valuePair in _downloaders)
+            {
+                var operation = valuePair.Value;
+                operation.AbortOperation();
+            }
+            _downloaders.Clear();
         }
 
         /// <summary>

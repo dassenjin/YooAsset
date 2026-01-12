@@ -144,7 +144,7 @@ namespace YooAsset
         internal override void InternalAbort()
         {
             if (_request != null)
-                _request.AbortRequest();
+                _request.Dispose();
         }
         internal override void InternalWaitForAsyncComplete()
         {

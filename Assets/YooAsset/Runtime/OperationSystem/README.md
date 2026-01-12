@@ -56,8 +56,8 @@ OperationSystem 是 YooAsset 资源管理系统的**异步操作调度核心**�
 ### 核心组件
 
 - **OperationSystem**: 静态调度器，管理所有操作的执行
+- **OperationScheduler**: 包裹级调度器，维护操作队列并负责更新调度
 - **AsyncOperationBase**: 异步操作基类，定义生命周期和状态
-- **GameAsyncOperation**: 游戏层操作基类，提供更友好的 API
 - **EOperationStatus**: 操作状态枚举
 
 ---
@@ -68,8 +68,8 @@ OperationSystem 是 YooAsset 资源管理系统的**异步操作调度核心**�
 OperationSystem/
 ├── EOperationStatus.cs        # 操作状态枚举
 ├── AsyncOperationBase.cs      # 异步操作基类
+├── OperationScheduler.cs      # 包裹级调度器
 ├── OperationSystem.cs         # 异步操作调度器
-└── GameAsyncOperation.cs      # 游戏层操作基类
 ```
 
 ---
@@ -113,11 +113,20 @@ None ─────────────────► Processing ───
 | `Status` | `EOperationStatus` | 当前状态 |
 | `Error` | `string` | 错误信息（失败时） |
 | `Progress` | `float` | 处理进度（0-1） |
-| `PackageName` | `string` | 所属包裹名称 |
 | `IsDone` | `bool` | 是否已完成（Succeed 或 Failed） |
 | `Task` | `Task` | 用于 async/await |
 | `BeginTime` | `string` | 开始时间（调试用） |
 | `ProcessTime` | `long` | 处理耗时毫秒（调试用） |
+
+> 说明：`AsyncOperationBase` 本身不保存包裹名称；包裹名称由 `OperationSystem.StartOperation(packageName, operation)` 传入，并由 `OperationScheduler` 维护。
+
+#### 内部协作：时间切片（`IsBusy`）
+
+为配合 `OperationSystem.MaxTimeSlice` 的时间切片预算，`AsyncOperationBase` 提供了内部属性 `IsBusy`（`internal`）用于任务在 `InternalUpdate()` 内主动让出本帧预算。
+
+- 推荐用法：在 `InternalUpdate()` 内部（或内部子步骤）在执行重逻辑前判断 `IsBusy`，若繁忙则 `return`，把工作拆到下一帧继续执行。
+- 同步等待特殊处理：当调用了 `WaitForAsyncComplete()` 进入同步等待阶段时，`IsBusy` 会强制返回 `false`，避免因时间切片判断导致同步等待无法推进。
+- 注意：`WaitForAsyncComplete()` 会阻塞主线程，应谨慎使用；同步等待阶段不受时间切片保护，可能带来卡顿。
 
 #### 公共事件
 
@@ -150,13 +159,15 @@ public void WaitForAsyncComplete();
 #### 子任务管理
 
 ```csharp
-// 子任务列表
-internal readonly List<AsyncOperationBase> Childs;
-
-// 添加/移除子任务
+// 添加/移除子任务（内部使用）
 internal void AddChildOperation(AsyncOperationBase child);
 internal void RemoveChildOperation(AsyncOperationBase child);
 ```
+
+**调用约束（重要）：**
+- 仅允许在 Unity 主线程调用（与 `OperationSystem.Update()` 的调度线程一致）。
+- 不要在 `InternalUpdate()` 正在遍历/处理中途频繁增删子任务；推荐在任务启动阶段完成子任务挂接，或在确保无并发修改风险的安全点调整。
+- `AbortOperation()` 会递归中止子任务，子任务的生命周期由父任务统一管理；避免在 `Completed` 回调里再去修改子任务关系，防止时序混乱。
 
 ---
 
@@ -208,6 +219,12 @@ public static void ClearPackageOperation(string packageName);
 public static void StartOperation(string packageName, AsyncOperationBase operation);
 ```
 
+#### 包裹调度说明
+
+- `packageName` 不允许为空（`null` / `""`），否则会抛出异常。
+- 若需要使用全局调度器，请传入 `OperationSystem.GLOBAL_SCHEDULER_NAME`（`Initialize()` 时自动创建）。
+- `packageName` 为非全局调度器名称时，必须先通过 `YooAssets.CreatePackage(packageName)` 创建包裹（内部会注册对应 `OperationScheduler`），否则会抛出异常。
+
 #### 回调监听
 
 ```csharp
@@ -220,47 +237,6 @@ public static void RegisterStartCallback(Action<string, AsyncOperationBase> call
 /// 注册任务结束回调
 /// </summary>
 public static void RegisterFinishCallback(Action<string, AsyncOperationBase> callback);
-```
-
----
-
-### GameAsyncOperation（游戏层基类）
-
-继承 `AsyncOperationBase`，为业务层提供更友好的 API。
-
-```csharp
-public abstract class GameAsyncOperation : AsyncOperationBase
-{
-    /// <summary>
-    /// 异步操作开始
-    /// </summary>
-    protected abstract void OnStart();
-
-    /// <summary>
-    /// 异步操作更新
-    /// </summary>
-    protected abstract void OnUpdate();
-
-    /// <summary>
-    /// 异步操作终止
-    /// </summary>
-    protected abstract void OnAbort();
-
-    /// <summary>
-    /// 异步等待完成（可选重写）
-    /// </summary>
-    protected virtual void OnWaitForAsyncComplete();
-
-    /// <summary>
-    /// 异步操作系统是否繁忙
-    /// </summary>
-    protected bool IsBusy();
-
-    /// <summary>
-    /// 终止异步操作
-    /// </summary>
-    protected void Abort();
-}
 ```
 
 ---
@@ -345,9 +321,9 @@ operation.Priority = 100;  // 设置高优先级
 ```
 
 **排序规则：**
-- 新操作添加时检查是否需要排序
-- 仅当存在非零优先级时触发排序
-- 使用 `List.Sort()` 进行原地排序
+- 新操作添加时：若新增队列存在非零优先级，则触发排序
+- 运行时修改 `Priority`：会在下一次调度器更新时自动触发重排（即时生效，通常为下一帧）
+- 排序使用 `List.Sort()` 进行原地排序；频繁修改优先级会带来额外排序开销，建议按需使用
 
 ### 时间切片
 
@@ -357,6 +333,10 @@ operation.Priority = 100;  // 设置高优先级
 // 设置每帧最多执行 8 毫秒
 OperationSystem.MaxTimeSlice = 8;
 ```
+
+**操作侧协作建议：**
+- 在操作的 `InternalUpdate()` 中使用 `IsBusy`（`AsyncOperationBase` 的内部属性）进行“自愿让出”，将重任务拆分到多帧执行。
+- 在同步等待（`WaitForAsyncComplete()`）阶段，`IsBusy` 会强制返回 `false`，以保证同步等待推进；此时需要自行评估卡顿风险。
 
 **执行流程：**
 
@@ -420,24 +400,29 @@ OperationSystem.MaxTimeSlice = 8;
 ### 调试信息结构
 
 ```csharp
+[Serializable]
 internal struct DebugOperationInfo
 {
-    public string OperationName;   // 操作类型名
-    public string OperationDesc;   // 操作描述
+    public string OperationName;   // 任务名称
+    public string OperationDesc;   // 任务说明
     public uint Priority;          // 优先级
-    public float Progress;         // 进度
-    public string BeginTime;       // 开始时间
-    public long ProcessTime;       // 处理耗时（毫秒）
-    public string Status;          // 状态
-    public List<DebugOperationInfo> Childs;  // 子操作
+    public float Progress;         // 任务进度
+    public string BeginTime;       // 任务开始的时间
+    public long ProcessTime;       // 处理耗时（单位：毫秒）
+    public string Status;          // 任务状态
+    public List<DebugOperationInfo> Childs;  // 子任务列表（注意：JsonUtility 序列化深度限制）
 }
 ```
+
+> 说明：该结构体真实定义位于 `Runtime/DiagnosticSystem/DebugOperationInfo.cs`，这里仅展示关键字段以便理解。
 
 ### 获取调试信息
 
 ```csharp
-// 获取指定包裹的所有操作信息
-var infos = OperationSystem.GetDebugOperationInfos("DefaultPackage");
+// 获取指定包裹的所有操作信息（内部调试接口）
+// packageName 不允许为空；全局调度器请使用 OperationSystem.GLOBAL_SCHEDULER_NAME
+// 非全局包裹需先 YooAssets.CreatePackage(packageName)
+var infos = OperationSystem.GetDebugOperationInfos(OperationSystem.GLOBAL_SCHEDULER_NAME);
 
 foreach (var info in infos)
 {
@@ -453,105 +438,6 @@ foreach (var info in infos)
 // 操作完成后可获取耗时
 Debug.Log($"开始时间: {operation.BeginTime}");
 Debug.Log($"处理耗时: {operation.ProcessTime}ms");
-```
-
----
-
-## 使用示例
-
-### 自定义异步操作
-
-```csharp
-public class MyCustomOperation : GameAsyncOperation
-{
-    private int _step = 0;
-
-    protected override void OnStart()
-    {
-        // 初始化操作
-        _step = 0;
-    }
-
-    protected override void OnUpdate()
-    {
-        // 检查系统是否繁忙（时间切片）
-        if (IsBusy())
-            return;
-
-        // 执行步骤
-        switch (_step)
-        {
-            case 0:
-                // 第一步
-                Progress = 0.3f;
-                _step = 1;
-                break;
-            case 1:
-                // 第二步
-                Progress = 0.6f;
-                _step = 2;
-                break;
-            case 2:
-                // 完成
-                Status = EOperationStatus.Succeed;
-                break;
-        }
-    }
-
-    protected override void OnAbort()
-    {
-        // 清理资源
-    }
-}
-```
-
-### 启动自定义操作
-
-```csharp
-var operation = new MyCustomOperation();
-OperationSystem.StartOperation("DefaultPackage", operation);
-
-// 使用回调
-operation.Completed += (op) =>
-{
-    if (op.Status == EOperationStatus.Succeed)
-        Debug.Log("操作成功");
-};
-
-// 或使用 await
-await operation.Task;
-```
-
-### 带子任务的操作
-
-```csharp
-public class ParentOperation : GameAsyncOperation
-{
-    private ChildOperation _child;
-
-    protected override void OnStart()
-    {
-        _child = new ChildOperation();
-        AddChildOperation(_child);  // 添加子任务
-        OperationSystem.StartOperation(PackageName, _child);
-    }
-
-    protected override void OnUpdate()
-    {
-        if (_child.IsDone)
-        {
-            if (_child.Status == EOperationStatus.Succeed)
-                Status = EOperationStatus.Succeed;
-            else
-                Status = EOperationStatus.Failed;
-        }
-    }
-
-    protected override void OnAbort()
-    {
-        // 子任务会自动中止
-    }
-}
 ```
 
 ---
@@ -589,7 +475,7 @@ AsyncOperationBase
 
 ### 组合模式
 
-通过 `Childs` 列表支持父子操作关系：
+通过内部子任务列表支持父子操作关系：
 
 ```
 ParentOperation
@@ -608,10 +494,6 @@ IEnumerator + IComparable<AsyncOperationBase>
               │
               ▼
     AsyncOperationBase (抽象基类)
-              │
-              ├── GameAsyncOperation (游戏层基类)
-              │         │
-              │         └── [业务层自定义操作]
               │
               └── [YooAsset 内部操作]
                       │
@@ -632,4 +514,4 @@ IEnumerator + IComparable<AsyncOperationBase>
 4. **子任务中止**：父操作中止时会自动中止所有子操作
 5. **回调异常**：`Completed` 回调中的异常会被捕获并记录，不会中断系统
 6. **编辑器重置**：编辑器中使用 `RuntimeInitializeOnLoadMethod` 自动重置状态
-7. **循环保护**：`WaitForAsyncComplete()` 有 1000 帧上限，防止无限循环
+7. **循环保护**：在 `InternalWaitForAsyncComplete()` 中如果使用 `ExecuteWhileDone()`，内部默认有 1000 次执行保护，防止无限循环

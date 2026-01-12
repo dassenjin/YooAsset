@@ -22,5 +22,10 @@ namespace YooAsset
         /// 原生文件
         /// </summary>
         RawBundle = 3,
+        
+        /// <summary>
+        /// 团结资源包
+        /// </summary>
+        InstantBundle = 4,
     }
 }

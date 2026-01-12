@@ -107,7 +107,7 @@ namespace YooAsset
         internal override void InternalWaitForAsyncComplete()
         {
             //注意：场景加载不支持异步转同步，为了支持同步加载方法需要实现该方法！
-            InternalUpdate();
+            RunOnceExecution();
         }
         public override void UnSuspendLoad()
         {

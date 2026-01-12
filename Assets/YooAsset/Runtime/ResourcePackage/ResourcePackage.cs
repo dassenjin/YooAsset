@@ -213,7 +213,7 @@ namespace YooAsset
             options.ReleaseAllHandles = true;
             options.LockLoadOperation = true;
             var operation = new DestroyOperation(this, options);
-            OperationSystem.StartOperation(null, operation);
+            OperationSystem.StartOperation(OperationSystem.GLOBAL_SCHEDULER_NAME, operation);
             return operation;
         }
 

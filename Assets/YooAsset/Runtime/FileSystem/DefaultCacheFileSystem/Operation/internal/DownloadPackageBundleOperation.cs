@@ -124,14 +124,7 @@ namespace YooAsset
         }
         internal override void InternalWaitForAsyncComplete()
         {
-            while (true)
-            {
-                if (ExecuteWhileDone())
-                {
-                    _steps = ESteps.Done;
-                    break;
-                }
-            }
+            RunBatchExecution();
         }
         internal override void InternalAbort()
         {

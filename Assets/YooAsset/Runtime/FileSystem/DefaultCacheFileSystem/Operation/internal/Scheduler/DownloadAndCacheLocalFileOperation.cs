@@ -98,6 +98,10 @@ namespace YooAsset
             // 检测下载结果
             if (_steps == ESteps.CheckRequest)
             {
+                //TODO 更新下载后台，防止无限挂起
+                if (IsWaitForAsyncComplete)
+                    _fileSystem.DownloadBackend.Update();
+
                 DownloadProgress = _request.DownloadProgress;
                 DownloadedBytes = _request.DownloadedBytes;
                 Progress = DownloadProgress;
@@ -177,23 +181,12 @@ namespace YooAsset
         internal override void InternalAbort()
         {
             if (_request != null)
-                _request.AbortRequest();
+                _request.Dispose();
         }
         internal override void InternalWaitForAsyncComplete()
         {
-            while (true)
-            {
-                //TODO 更新下载后台，防止无限挂起
-                _fileSystem.DownloadBackend.Update();
-
-                //TODO 等待导入或解压本地文件完毕，该操作会挂起主线程！
-                InternalUpdate();
-                if (IsDone)
-                    break;
-
-                //TODO 短暂休眠避免完全卡死
-                System.Threading.Thread.Sleep(1);
-            }
+            //TODO 等待导入或解压本地文件完毕，该操作会挂起主线程！
+            RunUntilCompletion();
         }
     }
 }

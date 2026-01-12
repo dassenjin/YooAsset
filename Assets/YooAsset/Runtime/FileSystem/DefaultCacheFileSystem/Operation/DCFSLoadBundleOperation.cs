@@ -262,14 +262,7 @@ namespace YooAsset
         }
         internal override void InternalWaitForAsyncComplete()
         {
-            while (true)
-            {
-                if (ExecuteWhileDone())
-                {
-                    _steps = ESteps.Done;
-                    break;
-                }
-            }
+            RunBatchExecution();
         }
     }
 
@@ -419,14 +412,7 @@ namespace YooAsset
         }
         internal override void InternalWaitForAsyncComplete()
         {
-            while (true)
-            {
-                if (ExecuteWhileDone())
-                {
-                    _steps = ESteps.Done;
-                    break;
-                }
-            }
+            RunBatchExecution();
         }
     }
 }

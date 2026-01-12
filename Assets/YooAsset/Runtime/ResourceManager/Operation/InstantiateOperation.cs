@@ -62,6 +62,9 @@ namespace YooAsset
                     return;
                 }
 
+                if (IsWaitForAsyncComplete)
+                    _handle.WaitForAsyncComplete();
+
                 if (_handle.IsDone == false)
                     return;
 
@@ -138,18 +141,7 @@ namespace YooAsset
         }
         internal override void InternalWaitForAsyncComplete()
         {
-            while (true)
-            {
-                // 等待句柄完成
-                if (_handle != null)
-                    _handle.WaitForAsyncComplete();
-
-                if (ExecuteWhileDone())
-                {
-                    _steps = ESteps.Done;
-                    break;
-                }
-            }
+            RunBatchExecution();
         }
         internal override string InternalGetDesc()
         {

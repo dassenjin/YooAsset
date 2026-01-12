@@ -10,7 +10,7 @@ namespace YooAsset
     {
         private List<AsyncOperationBase> _childs;
         private Action<AsyncOperationBase> _callback;
-        private int _whileFrame = 1000;
+        private uint _priority = 0;
 
         /// <summary>
         /// 等待异步执行完成
@@ -36,9 +36,27 @@ namespace YooAsset
         }
 
         /// <summary>
+        /// 标记脏（用于调度器检测并重排）
+        /// </summary>
+        internal bool IsDirty { set; get; } = false;
+
+        /// <summary>
         /// 任务优先级
         /// </summary>
-        public uint Priority { set; get; } = 0;
+        public uint Priority
+        {
+            set
+            {
+                if (_priority == value)
+                    return;
+                _priority = value;
+                IsDirty = true;
+            }
+            get
+            {
+                return _priority;
+            }
+        }
 
         /// <summary>
         /// 任务状态
@@ -122,7 +140,7 @@ namespace YooAsset
         }
         internal virtual void InternalWaitForAsyncComplete()
         {
-            throw new System.NotImplementedException(this.GetType().Name);
+            throw new YooInternalException($"InternalWaitForAsyncComplete() not implemented : {this.GetType().Name}");
         }
         internal virtual string InternalGetDesc()
         {
@@ -259,25 +277,63 @@ namespace YooAsset
         }
 
         /// <summary>
-        /// 执行While循环
+        /// 执行一次更新逻辑
         /// </summary>
-        protected bool ExecuteWhileDone()
+        protected void RunOnceExecution()
         {
-            if (IsDone == false)
+            if (IsDone)
+                return;
+
+            UpdateOperation();
+        }
+
+        /// <summary>
+        /// 批量执行一定次数的更新逻辑
+        /// </summary>
+        /// <param name="count">次数</param>
+        protected void RunBatchExecution(int count = 1000)
+        {
+            if (IsDone)
+                return;
+
+            int runCount = count;
+            while (true)
             {
                 // 执行更新逻辑
-                InternalUpdate();
+                UpdateOperation();
+                if (IsDone)
+                    break;
 
                 // 当执行次数用完时
-                _whileFrame--;
-                if (_whileFrame <= 0)
+                runCount--;
+                if (runCount <= 0)
                 {
                     Status = EOperationStatus.Failed;
                     Error = $"Operation {this.GetType().Name} failed to wait for async complete !";
                     YooLogger.Error(Error);
+                    break;
                 }
             }
-            return IsDone;
+        }
+
+        /// <summary>
+        /// 无限次数的执行更新逻辑，直到任务完成
+        /// </summary>
+        /// <param name="sleepMS">休眠时长</param>
+        protected void RunUntilCompletion(int sleepMS = 1)
+        {
+            if (IsDone)
+                return;
+
+            while (true)
+            {
+                UpdateOperation();
+                if (IsDone)
+                    break;
+
+                // 注意： 短暂休眠避免完全占用CPU资源
+                System.Threading.Thread.Sleep(sleepMS);
+            }
         }
 
         /// <summary>
@@ -299,11 +355,6 @@ namespace YooAsset
             {
                 IsWaitForAsyncComplete = true;
                 InternalWaitForAsyncComplete();
-
-#if UNITY_EDITOR
-                if (IsDone == false)
-                    throw new YooInternalException($"WaitForAsyncComplete() must complete operation: {this.GetType().Name}");
-#endif
             }
         }
 

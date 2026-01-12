@@ -69,16 +69,8 @@ namespace YooAsset
         }
         internal override void InternalWaitForAsyncComplete()
         {
-            while (true)
-            {
-                //TODO 等待子线程验证文件完毕，该操作会挂起主线程！
-                InternalUpdate();
-                if (IsDone)
-                    break;
-
-                //TODO 短暂休眠避免完全卡死
-                System.Threading.Thread.Sleep(1);
-            }
+            //TODO 等待子线程验证文件完毕，该操作会挂起主线程！
+            RunUntilCompletion();
         }
 
         private void VerifyInThread(object obj)

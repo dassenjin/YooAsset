@@ -225,7 +225,7 @@ namespace YooAsset
         public static void StartOperation(GameAsyncOperation operation)
         {
             // 注意：游戏业务逻辑的包裹填写为空
-            OperationSystem.StartOperation(string.Empty, operation);
+            OperationSystem.StartOperation(OperationSystem.GLOBAL_SCHEDULER_NAME, operation);
         }
 
 

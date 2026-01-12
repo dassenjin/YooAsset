@@ -16,15 +16,13 @@ namespace YooAsset
 #endif
 
         // 全局调度器名称
-        public const string GLOBAL_SCHEDULER_NAME = "";
+        public const string GLOBAL_SCHEDULER_NAME = "YOOASSET_GLOBAL_SCHEDULER";
 
         private static readonly Dictionary<string, OperationScheduler> _schedulerDic = new Dictionary<string, OperationScheduler>(100);
         private static readonly List<OperationScheduler> _schedulerList = new List<OperationScheduler>(100);
+        private static bool _isInitialize = false;
         private static bool _schedulerListDirty = false;
         private static int _createIndex = 0;
-
-        private static Action<string, AsyncOperationBase> _startCallback = null;
-        private static Action<string, AsyncOperationBase> _finishCallback = null;
 
         // 计时器相关
         private static Stopwatch _watch;
@@ -59,6 +57,7 @@ namespace YooAsset
         /// </summary>
         public static void Initialize()
         {
+            _isInitialize = true;
             _watch = Stopwatch.StartNew();
 
             // 创建全局调度器
@@ -70,6 +69,9 @@ namespace YooAsset
         /// </summary>
         public static void Update()
         {
+            if (_isInitialize == false)
+                return;
+
             // 重新排序调度器
             if (_schedulerListDirty)
             {
@@ -104,9 +106,8 @@ namespace YooAsset
             _schedulerList.Clear();
             _schedulerListDirty = false;
             _createIndex = 0;
+            _isInitialize = false;
 
-            _startCallback = null;
-            _finishCallback = null;
             _watch = null;
             _frameTime = 0;
             MaxTimeSlice = long.MaxValue;
@@ -115,7 +116,7 @@ namespace YooAsset
         /// <summary>
         /// 创建包裹调度器
         /// </summary>
-        internal static void CreatePackageScheduler(string packageName, int priority)
+        public static void CreatePackageScheduler(string packageName, int priority)
         {
             if (_schedulerDic.ContainsKey(packageName))
             {
@@ -131,7 +132,7 @@ namespace YooAsset
         /// <summary>
         /// 销毁包裹调度器
         /// </summary>
-        internal static void DestroyPackageScheduler(string packageName)
+        public static void DestroyPackageScheduler(string packageName)
         {
             // 不允许销毁默认调度器
             if (packageName == GLOBAL_SCHEDULER_NAME)
@@ -166,46 +167,10 @@ namespace YooAsset
         }
 
         /// <summary>
-        /// 监听任务开始
-        /// </summary>
-        public static void RegisterStartCallback(Action<string, AsyncOperationBase> callback)
-        {
-            _startCallback = callback;
-        }
-
-        /// <summary>
-        /// 监听任务结束
-        /// </summary>
-        public static void RegisterFinishCallback(Action<string, AsyncOperationBase> callback)
-        {
-            _finishCallback = callback;
-        }
-
-        /// <summary>
-        /// 触发任务开始回调
-        /// </summary>
-        internal static void InvokeStartCallback(string packageName, AsyncOperationBase operation)
-        {
-            _startCallback?.Invoke(packageName, operation);
-        }
-
-        /// <summary>
-        /// 触发任务完成回调
-        /// </summary>
-        internal static void InvokeFinishCallback(string packageName, AsyncOperationBase operation)
-        {
-            _finishCallback?.Invoke(packageName, operation);
-        }
-
-        /// <summary>
         /// 获取调度器（严格模式）
         /// </summary>
         private static OperationScheduler GetScheduler(string packageName)
         {
-            // 空包名路由到默认调度器
-            if (string.IsNullOrEmpty(packageName))
-                packageName = GLOBAL_SCHEDULER_NAME;
-
             if (_schedulerDic.TryGetValue(packageName, out var scheduler))
             {
                 return scheduler;
@@ -218,16 +183,8 @@ namespace YooAsset
         #region 调试信息
         internal static List<DebugOperationInfo> GetDebugOperationInfos(string packageName)
         {
-            // 空包名路由到默认调度器
-            if (string.IsNullOrEmpty(packageName))
-                packageName = GLOBAL_SCHEDULER_NAME;
-
-            if (_schedulerDic.TryGetValue(packageName, out var scheduler))
-            {
-                return scheduler.GetDebugOperationInfos();
-            }
-
-            return new List<DebugOperationInfo>();
+            var scheduler = GetScheduler(packageName);
+            return scheduler.GetDebugOperationInfos();
         }
         #endregion
     }
