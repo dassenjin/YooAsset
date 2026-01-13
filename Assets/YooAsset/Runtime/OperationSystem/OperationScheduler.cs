@@ -10,6 +10,7 @@ namespace YooAsset
     {
         private readonly List<AsyncOperationBase> _operations = new List<AsyncOperationBase>(100);
         private readonly List<AsyncOperationBase> _newList = new List<AsyncOperationBase>(100);
+        private uint _priority = 0;
 
         /// <summary>
         /// 所属包裹名称
@@ -19,7 +20,23 @@ namespace YooAsset
         /// <summary>
         /// 调度器优先级（值越大越优先）
         /// </summary>
-        public int Priority { private set; get; }
+        public uint Priority
+        {
+            get { return _priority; }
+            set
+            {
+                if (_priority != value)
+                {
+                    _priority = value;
+                    IsDirty = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 优先级是否已变更（需要重新排序）
+        /// </summary>
+        public bool IsDirty { set; get; } = false;
 
         /// <summary>
         /// 创建顺序（用于同优先级稳定排序）
@@ -27,7 +44,7 @@ namespace YooAsset
         public int CreateIndex { private set; get; }
 
 
-        public OperationScheduler(string packageName, int priority, int createIndex)
+        public OperationScheduler(string packageName, uint priority, int createIndex)
         {
             PackageName = packageName;
             Priority = priority;

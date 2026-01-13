@@ -21,7 +21,6 @@ namespace YooAsset
         private static readonly Dictionary<string, OperationScheduler> _schedulerDic = new Dictionary<string, OperationScheduler>(100);
         private static readonly List<OperationScheduler> _schedulerList = new List<OperationScheduler>(100);
         private static bool _isInitialize = false;
-        private static bool _schedulerListDirty = false;
         private static int _createIndex = 0;
 
         // 计时器相关
@@ -75,10 +74,18 @@ namespace YooAsset
             if (_isInitialize == false)
                 return;
 
-            // 重新排序调度器
-            if (_schedulerListDirty)
+            // 检测是否需要执行排序
+            bool isDirty = false;
+            foreach (var scheduler in _schedulerList)
             {
-                _schedulerListDirty = false;
+                if (scheduler.IsDirty)
+                {
+                    scheduler.IsDirty = false;
+                    isDirty = true;
+                }
+            }
+            if (isDirty)
+            {
                 _schedulerList.Sort();
             }
 
@@ -110,7 +117,6 @@ namespace YooAsset
             }
             _schedulerDic.Clear();
             _schedulerList.Clear();
-            _schedulerListDirty = false;
             _createIndex = 0;
 
             _watch = null;
@@ -121,7 +127,7 @@ namespace YooAsset
         /// <summary>
         /// 创建包裹调度器
         /// </summary>
-        public static void CreatePackageScheduler(string packageName, int priority)
+        public static OperationScheduler CreatePackageScheduler(string packageName, uint priority)
         {
             DebugCheckInitialize(packageName);
 
@@ -133,7 +139,7 @@ namespace YooAsset
             var scheduler = new OperationScheduler(packageName, priority, _createIndex++);
             _schedulerDic.Add(packageName, scheduler);
             _schedulerList.Add(scheduler);
-            _schedulerListDirty = true;
+            return scheduler;
         }
 
         /// <summary>
@@ -177,6 +183,28 @@ namespace YooAsset
 
             var scheduler = GetScheduler(packageName);
             scheduler.StartOperation(operation);
+        }
+
+        /// <summary>
+        /// 设置调度器优先级
+        /// </summary>
+        public static void SetSchedulerPriority(string packageName, uint priority)
+        {
+            DebugCheckInitialize(packageName);
+
+            var scheduler = GetScheduler(packageName);
+            scheduler.Priority = priority;
+        }
+
+        /// <summary>
+        /// 获取调度器优先级
+        /// </summary>
+        public static uint GetSchedulerPriority(string packageName)
+        {
+            DebugCheckInitialize(packageName);
+
+            var scheduler = GetScheduler(packageName);
+            return scheduler.Priority;
         }
 
         /// <summary>

@@ -44,6 +44,15 @@ namespace YooAsset
             }
         }
 
+        /// <summary>
+        /// 包裹优先级（值越大越优先更新）
+        /// </summary>
+        public uint PackagePriority
+        {
+            get { return OperationSystem.GetSchedulerPriority(PackageName); }
+            set { OperationSystem.SetSchedulerPriority(PackageName, value); }
+        }
+        
 
         internal ResourcePackage(string packageName)
         {

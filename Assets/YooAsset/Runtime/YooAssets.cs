@@ -112,7 +112,7 @@ namespace YooAsset
         /// </summary>
         /// <param name="packageName">包裹名称</param>
         /// <param name="packagePriority">包裹优先级（值越大越优先更新）</param>
-        public static ResourcePackage CreatePackage(string packageName, int packagePriority)
+        public static ResourcePackage CreatePackage(string packageName, uint packagePriority)
         {
             CheckException(packageName);
             if (ContainsPackage(packageName))
