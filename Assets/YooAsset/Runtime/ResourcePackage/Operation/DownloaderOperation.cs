@@ -3,13 +3,115 @@ using System.Collections.Generic;
 
 namespace YooAsset
 {
+    #region 下载器相关类型定义
+    /// <summary>
+    /// 下载器结束
+    /// </summary>
+    public struct DownloaderFinishData
+    {
+        /// <summary>
+        /// 所属包裹名称
+        /// </summary>
+        public string PackageName;
+
+        /// <summary>
+        /// 是否成功
+        /// </summary>
+        public bool Succeed;
+    }
+
+    /// <summary>
+    /// 下载器相关的更新数据
+    /// </summary>
+    public struct DownloadUpdateData
+    {
+        /// <summary>
+        /// 所属包裹名称
+        /// </summary>
+        public string PackageName;
+
+        /// <summary>
+        /// 下载进度 (0-1f)
+        /// </summary>
+        public float Progress;
+
+        /// <summary>
+        /// 下载文件总数
+        /// </summary>
+        public int TotalDownloadCount;
+
+        /// <summary>
+        /// 当前完成的下载文件数量
+        /// </summary>
+        public int CurrentDownloadCount;
+
+        /// <summary>
+        /// 下载数据总大小（单位：字节）
+        /// </summary>
+        public long TotalDownloadBytes;
+
+        /// <summary>
+        /// 当前完成的下载数据大小（单位：字节）
+        /// </summary>
+        public long CurrentDownloadBytes;
+    }
+
+    /// <summary>
+    /// 下载器相关的错误数据
+    /// </summary>
+    public struct DownloadErrorData
+    {
+        /// <summary>
+        /// 所属包裹名称
+        /// </summary>
+        public string PackageName;
+
+        /// <summary>
+        /// 下载失败的文件名称
+        /// </summary>
+        public string FileName;
+
+        /// <summary>
+        /// 错误信息
+        /// </summary>
+        public string ErrorInfo;
+    }
+
+    /// <summary>
+    /// 下载器相关的文件数据
+    /// </summary>
+    public struct DownloadFileData
+    {
+        /// <summary>
+        /// 所属包裹名称
+        /// </summary>
+        public string PackageName;
+
+        /// <summary>
+        /// 资源包名称
+        /// </summary>
+        public string BundleName;
+
+        /// <summary>
+        /// 文件名称
+        /// </summary>
+        public string FileName;
+
+        /// <summary>
+        /// 文件大小
+        /// </summary>
+        public long FileSize;
+    }
+    #endregion
+
     public abstract class DownloaderOperation : AsyncOperationBase
     {
         private enum ESteps
         {
             None,
             Check,
-            Loading,
+            Downloading,
+            Finish,
             Done,
         }
 
@@ -127,15 +229,37 @@ namespace YooAsset
                 {
                     _steps = ESteps.Done;
                     Status = EOperationStatus.Failed;
-                    Error = "Download list is null.";
+                    Error = "Download bundle list is null.";
+
+                    if (DownloadFinishCallback != null)
+                    {
+                        var data = new DownloaderFinishData();
+                        data.PackageName = _packageName;
+                        data.Succeed = false;
+                        DownloadFinishCallback.Invoke(data);
+                    }
+                }
+                else if (_bundleInfoList.Count == 0)
+                {
+                    _steps = ESteps.Done;
+                    Status = EOperationStatus.Succeed;
+                    Progress = 1f;
+
+                    if (DownloadFinishCallback != null)
+                    {
+                        var data = new DownloaderFinishData();
+                        data.PackageName = _packageName;
+                        data.Succeed = true;
+                        DownloadFinishCallback.Invoke(data);
+                    }
                 }
                 else
                 {
-                    _steps = ESteps.Loading;
+                    _steps = ESteps.Downloading;
                 }
             }
 
-            if (_steps == ESteps.Loading)
+            if (_steps == ESteps.Downloading)
             {
                 // 检测下载器结果
                 _removeList.Clear();
@@ -172,7 +296,10 @@ namespace YooAsset
                 {
                     _lastDownloadBytes = downloadBytes;
                     _lastDownloadCount = _cachedDownloadCount;
-                    Progress = (float)_lastDownloadBytes / TotalDownloadBytes;
+                    if (TotalDownloadBytes == 0)
+                        Progress = (float)_lastDownloadCount / TotalDownloadCount;
+                    else
+                        Progress = (float)_lastDownloadBytes / TotalDownloadBytes;
 
                     if (DownloadUpdateCallback != null)
                     {
@@ -209,54 +336,60 @@ namespace YooAsset
                         {
                             var data = new DownloadFileData();
                             data.PackageName = _packageName;
-                            data.FileName = bundleInfo.Bundle.BundleName;
+                            data.BundleName = bundleInfo.Bundle.BundleName;
+                            data.FileName = bundleInfo.Bundle.FileName;
                             data.FileSize = bundleInfo.Bundle.FileSize;
                             DownloadFileBeginCallback.Invoke(data);
                         }
                     }
                 }
 
-                // 下载结算
+                // 下载结束
                 if (_downloaders.Count == 0)
                 {
-                    if (_failedList.Count > 0)
+                    _steps = ESteps.Finish;
+                }
+            }
+
+            if (_steps == ESteps.Finish)
+            {
+                if (_failedList.Count > 0)
+                {
+                    var failedDownloader = _failedList[0];
+                    string bundleName = failedDownloader.Bundle.BundleName;
+                    _steps = ESteps.Done;
+                    Status = EOperationStatus.Failed;
+                    Error = $"Failed to download file : {bundleName}";
+
+                    if (DownloadErrorCallback != null)
                     {
-                        var failedDownloader = _failedList[0];
-                        string bundleName = failedDownloader.Bundle.BundleName;
-                        _steps = ESteps.Done;
-                        Status = EOperationStatus.Failed;
-                        Error = $"Failed to download file : {bundleName}";
-
-                        if (DownloadErrorCallback != null)
-                        {
-                            var data = new DownloadErrorData();
-                            data.PackageName = _packageName;
-                            data.FileName = bundleName;
-                            data.ErrorInfo = failedDownloader.Error;
-                            DownloadErrorCallback.Invoke(data);
-                        }
-
-                        if (DownloadFinishCallback != null)
-                        {
-                            var data = new DownloaderFinishData();
-                            data.PackageName = _packageName;
-                            data.Succeed = false;
-                            DownloadFinishCallback.Invoke(data);
-                        }
+                        var data = new DownloadErrorData();
+                        data.PackageName = _packageName;
+                        data.FileName = bundleName;
+                        data.ErrorInfo = failedDownloader.Error;
+                        DownloadErrorCallback.Invoke(data);
                     }
-                    else
-                    {
-                        // 结算成功
-                        _steps = ESteps.Done;
-                        Status = EOperationStatus.Succeed;
 
-                        if (DownloadFinishCallback != null)
-                        {
-                            var data = new DownloaderFinishData();
-                            data.PackageName = _packageName;
-                            data.Succeed = true;
-                            DownloadFinishCallback.Invoke(data);
-                        }
+                    if (DownloadFinishCallback != null)
+                    {
+                        var data = new DownloaderFinishData();
+                        data.PackageName = _packageName;
+                        data.Succeed = false;
+                        DownloadFinishCallback.Invoke(data);
+                    }
+                }
+                else
+                {
+                    // 结算成功
+                    _steps = ESteps.Done;
+                    Status = EOperationStatus.Succeed;
+
+                    if (DownloadFinishCallback != null)
+                    {
+                        var data = new DownloaderFinishData();
+                        data.PackageName = _packageName;
+                        data.Succeed = true;
+                        DownloadFinishCallback.Invoke(data);
                     }
                 }
             }

@@ -1163,7 +1163,6 @@ namespace YooAsset
         #endregion
 
         #region 调试方法
-        [Conditional("DEBUG")]
         private void DebugCheckInitialize(bool checkActiveManifest = true)
         {
             if (_initializeStatus == EOperationStatus.None)

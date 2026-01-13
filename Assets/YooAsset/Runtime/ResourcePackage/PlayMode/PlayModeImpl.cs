@@ -298,7 +298,8 @@ namespace YooAsset
                 return new List<BundleInfo>();
 
             // 获取资源对象的资源包和所有依赖资源包
-            List<PackageBundle> checkList = new List<PackageBundle>();
+            HashSet<string> checkSet = new HashSet<string>();
+            List<PackageBundle> checkList = new List<PackageBundle>(assetInfos.Length);
             foreach (var assetInfo in assetInfos)
             {
                 if (assetInfo.IsInvalid)
@@ -309,15 +310,21 @@ namespace YooAsset
 
                 // 注意：如果清单里未找到资源包会抛出异常！
                 PackageBundle mainBundle = manifest.GetMainPackageBundle(assetInfo.Asset);
-                if (checkList.Contains(mainBundle) == false)
+                if (checkSet.Contains(mainBundle.BundleGUID) == false)
+                {
+                    checkSet.Add(mainBundle.BundleGUID);
                     checkList.Add(mainBundle);
+                }
 
                 // 注意：如果清单里未找到资源包会抛出异常！
                 List<PackageBundle> mainDependBundles = manifest.GetAssetAllDependencies(assetInfo.Asset);
                 foreach (var dependBundle in mainDependBundles)
                 {
-                    if (checkList.Contains(dependBundle) == false)
+                    if (checkSet.Contains(dependBundle.BundleGUID) == false)
+                    {
+                        checkSet.Add(dependBundle.BundleGUID);
                         checkList.Add(dependBundle);
+                    }
                 }
 
                 // 下载主资源包内所有资源对象依赖的资源包
@@ -326,14 +333,20 @@ namespace YooAsset
                     foreach (var otherMainAsset in mainBundle.IncludeMainAssets)
                     {
                         var otherMainBundle = manifest.GetMainPackageBundle(otherMainAsset.BundleID);
-                        if (checkList.Contains(otherMainBundle) == false)
+                        if (checkSet.Contains(otherMainBundle.BundleGUID) == false)
+                        {
+                            checkSet.Add(otherMainBundle.BundleGUID);
                             checkList.Add(otherMainBundle);
+                        }
 
                         List<PackageBundle> otherDependBundles = manifest.GetAssetAllDependencies(otherMainAsset);
                         foreach (var dependBundle in otherDependBundles)
                         {
-                            if (checkList.Contains(dependBundle) == false)
+                            if (checkSet.Contains(dependBundle.BundleGUID) == false)
+                            {
+                                checkSet.Add(dependBundle.BundleGUID);
                                 checkList.Add(dependBundle);
+                            }
                         }
                     }
                 }

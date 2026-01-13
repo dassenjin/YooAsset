@@ -91,7 +91,7 @@ namespace YooAsset
                     {
                         _steps = ESteps.Done;
                         Status = EOperationStatus.Failed;
-                        Error = $"The manifest file version are not compatible : {fileVersion} != {ManifestDefine.FileVersion}";
+                        Error = $"The manifest version is lower than the minimum compatible version : {fileVer} < {ver2025_8_28}";
                         return;
                     }
 
@@ -158,7 +158,7 @@ namespace YooAsset
                         FillAssetCollection(Manifest, packageAsset, replaceAssetPath);
 
                         _packageAssetCount--;
-                        Progress = 1f - _packageAssetCount / _progressTotalValue;
+                        Progress = 1f - (_packageAssetCount / (float)_progressTotalValue);
                         if (IsBusy)
                             break;
                     }
@@ -192,7 +192,7 @@ namespace YooAsset
                         FillBundleCollection(Manifest, packageBundle);
 
                         _packageBundleCount--;
-                        Progress = 1f - _packageBundleCount / _progressTotalValue;
+                        Progress = 1f - (_packageBundleCount / (float)_progressTotalValue);
                         if (IsBusy)
                             break;
                     }

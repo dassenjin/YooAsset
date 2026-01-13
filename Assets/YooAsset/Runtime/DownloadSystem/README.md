@@ -41,20 +41,20 @@ DownloadSystem 的职责是提供“可替换后端 + 统一请求接口 + 轮�
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    上层调用者                            │
-│              (FileSystem / ResourceManager)              │
+│                    上层调用者                             │
+│              (FileSystem / ResourceManager)             │
 └─────────────────────────┬───────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────┐
-│                  IDownloadBackend                        │
+│                  IDownloadBackend                       │
 │                    (后端接口)                            │
-│         定义网络库合约，工厂模式创建请求                   │
+│         定义网络库合约，工厂模式创建请求                     │
 └─────────────────────────┬───────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────┐
-│                  IDownloadRequest                        │
+│                  IDownloadRequest                       │
 │                    (请求接口)                            │
-│           轮询式生命周期管理，状态机驱动                   │
+│           轮询式生命周期管理，状态机驱动                     │
 └─────────────────────────┬───────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────┐
@@ -243,16 +243,6 @@ public struct DownloadSimulateRequestArgs
     public long DownloadSpeed;    // 模拟速度（字节/秒），默认 1MB/s
 }
 ```
-
-### 回调数据结构体
-
-| 结构体 | 用途 | 关键字段 |
-|--------|------|----------|
-| `DownloaderFinishData` | 下载完成回调 | `PackageName`, `Succeed` |
-| `DownloadUpdateData` | 进度更新回调 | `Progress`, `TotalDownloadBytes`, `CurrentDownloadBytes` |
-| `DownloadErrorData` | 下载错误回调 | `FileName`, `ErrorInfo` |
-| `DownloadFileData` | 文件完成回调 | `FileName`, `FileSize` |
-| `ImportFileInfo` | 导入文件元数据 | `FilePath`, `BundleName`, `BundleGUID` |
 
 ---
 

@@ -372,6 +372,8 @@ public class PackageBundle
 
 清单序列化工具类。
 
+> 注意：`DeserializeFromJson` 仅用于编辑器/调试用途，不保证运行时可用；运行时请优先使用二进制清单 `DeserializeFromBinary`。
+
 ```csharp
 // 验证清单数据完整性
 static bool VerifyManifestData(byte[] fileData, string hashValue);
@@ -381,6 +383,7 @@ static string SerializeToJson(PackageManifest manifest);
 static byte[] SerializeToBinary(PackageManifest manifest);
 
 // 反序列化
+// 注意：JSON 反序列化仅用于编辑器/调试用途，运行时请优先使用二进制清单。
 static PackageManifest DeserializeFromJson(string jsonContent);
 static PackageManifest DeserializeFromBinary(byte[] binaryData);
 
