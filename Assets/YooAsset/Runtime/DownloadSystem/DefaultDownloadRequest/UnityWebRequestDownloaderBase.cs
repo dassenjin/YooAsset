@@ -255,12 +255,7 @@ namespace YooAsset
             if (_watchdogAborted)
                 return;
 
-#if UNITY_2020_3_OR_NEWER
-            double realtimeSinceStartup = UnityEngine.Time.realtimeSinceStartupAsDouble;
-#else
-            double realtimeSinceStartup = UnityEngine.Time.realtimeSinceStartup;
-#endif
-
+            double realtimeSinceStartup = TimeUtility.RealtimeSinceStartup;
             if (DownloadedBytes != _lastDownloadBytes)
             {
                 _lastDownloadBytes = DownloadedBytes;

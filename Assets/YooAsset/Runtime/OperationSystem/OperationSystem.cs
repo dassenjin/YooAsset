@@ -62,7 +62,7 @@ namespace YooAsset
                 _watch = Stopwatch.StartNew();
 
                 // 创建全局调度器
-                CreatePackageScheduler(GLOBAL_SCHEDULER_NAME, int.MaxValue);
+                CreatePackageScheduler(GLOBAL_SCHEDULER_NAME, uint.MaxValue);
             }
         }
 
@@ -136,9 +136,10 @@ namespace YooAsset
                 throw new YooInternalException($"Package scheduler already exists: {packageName}");
             }
 
-            var scheduler = new OperationScheduler(packageName, priority, _createIndex++);
+            var scheduler = new OperationScheduler(packageName, _createIndex++);
             _schedulerDic.Add(packageName, scheduler);
             _schedulerList.Add(scheduler);
+            scheduler.Priority = priority;
             return scheduler;
         }
 

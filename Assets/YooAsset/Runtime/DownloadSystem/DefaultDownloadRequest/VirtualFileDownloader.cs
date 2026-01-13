@@ -87,7 +87,7 @@ namespace YooAsset
             if (Status == EDownloadRequestStatus.None)
             {
                 Status = EDownloadRequestStatus.Running;
-                _lastUpdateTime = GetUnityEngineRealtime();
+                _lastUpdateTime = TimeUtility.RealtimeSinceStartup;
             }
         }
 
@@ -99,7 +99,7 @@ namespace YooAsset
             if (Status != EDownloadRequestStatus.Running)
                 return;
 
-            double currentTime = GetUnityEngineRealtime();
+            double currentTime = TimeUtility.RealtimeSinceStartup;
             double deltaTime = currentTime - _lastUpdateTime;
             _lastUpdateTime = currentTime;
 
@@ -136,15 +136,6 @@ namespace YooAsset
         /// </summary>
         public void Dispose()
         {
-        }
-
-        private double GetUnityEngineRealtime()
-        {
-#if UNITY_2020_3_OR_NEWER
-            return UnityEngine.Time.realtimeSinceStartupAsDouble;
-#else
-            return UnityEngine.Time.realtimeSinceStartup;
-#endif
         }
     }
 }

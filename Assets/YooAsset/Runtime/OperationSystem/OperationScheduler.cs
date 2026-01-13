@@ -44,10 +44,9 @@ namespace YooAsset
         public int CreateIndex { private set; get; }
 
 
-        public OperationScheduler(string packageName, uint priority, int createIndex)
+        public OperationScheduler(string packageName, int createIndex)
         {
             PackageName = packageName;
-            Priority = priority;
             CreateIndex = createIndex;
         }
 

@@ -217,6 +217,16 @@ public static void ClearPackageOperation(string packageName);
 /// 启动异步操作
 /// </summary>
 public static void StartOperation(string packageName, AsyncOperationBase operation);
+
+/// <summary>
+/// 设置调度器优先级
+/// </summary>
+public static void SetSchedulerPriority(string packageName, uint priority);
+
+/// <summary>
+/// 获取调度器优先级
+/// </summary>
+public static uint GetSchedulerPriority(string packageName);
 ```
 
 #### 包裹调度说明
@@ -315,10 +325,31 @@ void LoadAssetSync()
 
 操作按 `Priority` 属性降序排列，优先级高的操作先执行。
 
+#### 操作优先级
+
 ```csharp
 var operation = package.LoadAssetAsync<GameObject>(location);
 operation.Priority = 100;  // 设置高优先级
 ```
+
+#### 包裹优先级
+
+通过 `ResourcePackage.PackagePriority` 可以设置包裹的调度器优先级，值越大越优先更新。
+
+```csharp
+// 创建包裹时指定优先级
+var package = YooAssets.CreatePackage("MyPackage", 100);
+
+// 运行时动态调整优先级
+package.PackagePriority = 200;
+
+// 获取当前优先级
+uint priority = package.PackagePriority;
+```
+
+**使用场景：**
+- 多包裹场景下，可根据游戏状态动态调整包裹优先级
+- 例如：进入战斗时提高战斗资源包的优先级，退出战斗时恢复默认优先级
 
 **排序规则：**
 - 新操作添加时：若新增队列存在非零优先级，则触发排序

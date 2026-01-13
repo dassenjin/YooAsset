@@ -25,7 +25,7 @@ namespace YooAsset
         private List<VerifyFileElement> _verifyingList;
         private int _verifyMaxNum;
         private int _verifyTotalCount;
-        private float _verifyStartTime;
+        private double _verifyStartTime;
         private int _succeedCount;
         private int _failedCount;
         private ESteps _steps = ESteps.None;
@@ -40,7 +40,7 @@ namespace YooAsset
         internal override void InternalStart()
         {
             _steps = ESteps.InitVerify;
-            _verifyStartTime = UnityEngine.Time.realtimeSinceStartup;
+            _verifyStartTime = TimeUtility.RealtimeSinceStartup;
         }
         internal override void InternalUpdate()
         {
@@ -84,7 +84,7 @@ namespace YooAsset
                 {
                     _steps = ESteps.Done;
                     Status = EOperationStatus.Succeed;
-                    float costTime = UnityEngine.Time.realtimeSinceStartup - _verifyStartTime;
+                    double costTime = TimeUtility.RealtimeSinceStartup - _verifyStartTime;
                     YooLogger.Log($"Verify cache files elapsed time {costTime:f1} seconds");
                 }
 

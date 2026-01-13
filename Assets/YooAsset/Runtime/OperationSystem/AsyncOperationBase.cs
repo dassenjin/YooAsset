@@ -213,7 +213,16 @@ namespace YooAsset
                 DebugBeginRecording();
 
                 // 开始任务
-                InternalStart();
+                try
+                {
+                    InternalStart();
+                }
+                catch (Exception ex)
+                {
+                    Status = EOperationStatus.Failed;
+                    Error = ex.ToString();
+                    YooLogger.Error($"Exception in {this.GetType().Name}.InternalStart : {ex}");
+                }
             }
         }
 
@@ -288,6 +297,7 @@ namespace YooAsset
 
                 try
                 {
+                    //TODO 单个回调异常会阻断后续回调
                     _callback?.Invoke(this);
                 }
                 catch (Exception ex)
@@ -392,7 +402,7 @@ namespace YooAsset
         /// <summary>
         /// 开始的时间
         /// </summary>
-        public string BeginTime = string.Empty;
+        public string BeginTime { protected set; get; }
 
         /// <summary>
         /// 处理耗时（单位：毫秒）
@@ -407,7 +417,7 @@ namespace YooAsset
         {
             if (_watch == null)
             {
-                BeginTime = SpawnTimeToString(UnityEngine.Time.realtimeSinceStartup);
+                BeginTime = SpawnTimeToString(TimeUtility.RealtimeSinceStartup);
                 _watch = Stopwatch.StartNew();
             }
         }
@@ -431,11 +441,11 @@ namespace YooAsset
             }
         }
 
-        private string SpawnTimeToString(float spawnTime)
+        private string SpawnTimeToString(double spawnTime)
         {
-            float h = UnityEngine.Mathf.FloorToInt(spawnTime / 3600f);
-            float m = UnityEngine.Mathf.FloorToInt(spawnTime / 60f - h * 60f);
-            float s = UnityEngine.Mathf.FloorToInt(spawnTime - m * 60f - h * 3600f);
+            double h = System.Math.Floor(spawnTime / 3600);
+            double m = System.Math.Floor(spawnTime / 60 - h * 60);
+            double s = System.Math.Floor(spawnTime - m * 60 - h * 3600);
             return h.ToString("00") + ":" + m.ToString("00") + ":" + s.ToString("00");
         }
         private bool WouldCreateCycle(AsyncOperationBase child)

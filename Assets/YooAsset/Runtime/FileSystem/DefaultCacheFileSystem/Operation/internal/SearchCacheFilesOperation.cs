@@ -17,7 +17,7 @@ namespace YooAsset
 
         private readonly DefaultCacheFileSystem _fileSystem;
         private IEnumerator<string> _filesEnumerator = null;
-        private float _verifyStartTime;
+        private double _verifyStartTime;
         private ESteps _steps = ESteps.None;
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace YooAsset
         internal override void InternalStart()
         {
             _steps = ESteps.Prepare;
-            _verifyStartTime = UnityEngine.Time.realtimeSinceStartup;
+            _verifyStartTime = TimeUtility.RealtimeSinceStartup;
         }
         internal override void InternalUpdate()
         {
@@ -58,7 +58,7 @@ namespace YooAsset
 
                 _steps = ESteps.Done;
                 Status = EOperationStatus.Succeed;
-                float costTime = UnityEngine.Time.realtimeSinceStartup - _verifyStartTime;
+                double costTime = TimeUtility.RealtimeSinceStartup - _verifyStartTime;
                 YooLogger.Log($"Search cache files elapsed time {costTime:f1} seconds");
             }
         }

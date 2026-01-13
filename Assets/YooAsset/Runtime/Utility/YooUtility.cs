@@ -6,6 +6,27 @@ using System.Text;
 namespace YooAsset
 {
     /// <summary>
+    /// 时间工具类
+    /// </summary>
+    internal static class TimeUtility
+    {
+        /// <summary>
+        /// The real time in seconds since the game started
+        /// </summary>
+        public static double RealtimeSinceStartup
+        {
+            get
+            {
+#if UNITY_2020_3_OR_NEWER
+                return UnityEngine.Time.realtimeSinceStartupAsDouble;
+#else
+                return UnityEngine.Time.realtimeSinceStartup;
+#endif
+            }
+        }
+    }
+
+    /// <summary>
     /// 路径工具类
     /// </summary>
     internal static class PathUtility
