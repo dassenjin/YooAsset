@@ -3,24 +3,13 @@ using UniFramework.Machine;
 using UniFramework.Event;
 using YooAsset;
 
-public class PatchOperation : GameAsyncOperation
+public static class PatchManager
 {
-    private enum ESteps
+    private static readonly EventGroup _eventGroup = new EventGroup();
+    private static StateMachine _machine;
+
+    public static void Create(string packageName, EPlayMode playMode)
     {
-        None,
-        Update,
-        Done,
-    }
-
-    private readonly EventGroup _eventGroup = new EventGroup();
-    private readonly StateMachine _machine;
-    private readonly string _packageName;
-    private ESteps _steps = ESteps.None;
-
-    public PatchOperation(string packageName, EPlayMode playMode)
-    {
-        _packageName = packageName;
-
         // 注册监听事件
         _eventGroup.AddListener<UserEventDefine.UserTryInitialize>(OnHandleEventMessage);
         _eventGroup.AddListener<UserEventDefine.UserBeginDownloadWebFiles>(OnHandleEventMessage);
@@ -29,7 +18,7 @@ public class PatchOperation : GameAsyncOperation
         _eventGroup.AddListener<UserEventDefine.UserTryDownloadWebFiles>(OnHandleEventMessage);
 
         // 创建状态机
-        _machine = new StateMachine(this);
+        _machine = new StateMachine(null);
         _machine.AddNode<FsmInitializePackage>();
         _machine.AddNode<FsmRequestPackageVersion>();
         _machine.AddNode<FsmUpdatePackageManifest>();
@@ -42,37 +31,19 @@ public class PatchOperation : GameAsyncOperation
         _machine.SetBlackboardValue("PackageName", packageName);
         _machine.SetBlackboardValue("PlayMode", playMode);
     }
-    protected override void OnStart()
+    public static void Start()
     {
-        _steps = ESteps.Update;
         _machine.Run<FsmInitializePackage>();
     }
-    protected override void OnUpdate()
+    public static void Update()
     {
-        if (_steps == ESteps.None || _steps == ESteps.Done)
-            return;
-
-        if (_steps == ESteps.Update)
-        {
-            _machine.Update();
-        }
-    }
-    protected override void OnAbort()
-    {
-    }
-
-    public void SetFinish()
-    {
-        _steps = ESteps.Done;
-        _eventGroup.RemoveAllListener();
-        Status = EOperationStatus.Succeed;
-        Debug.Log($"Package {_packageName} patch done !");
+        _machine.Update();
     }
 
     /// <summary>
     /// 接收事件
     /// </summary>
-    private void OnHandleEventMessage(IEventMessage message)
+    private static void OnHandleEventMessage(IEventMessage message)
     {
         if (message is UserEventDefine.UserTryInitialize)
         {
