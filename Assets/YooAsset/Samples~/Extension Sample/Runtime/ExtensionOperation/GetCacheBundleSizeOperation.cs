@@ -7,7 +7,7 @@ using YooAsset;
 /// <summary>
 /// 获取沙盒目录里缓存文件大小
 /// </summary>
-public class GetCacheBundleSizeOperation : GameAsyncOperation
+public class GetCacheBundleSizeOperation : AsyncOperationBase
 {
     private enum ESteps
     {
@@ -29,11 +29,11 @@ public class GetCacheBundleSizeOperation : GameAsyncOperation
     {
         _packageName = packageName;
     }
-    protected override void OnStart()
+    internal override void InternalStart()
     {
         _steps = ESteps.GetCacheFiles;
     }
-    protected override void OnUpdate()
+    internal override void InternalUpdate()
     {
         if (_steps == ESteps.None || _steps == ESteps.Done)
             return;
@@ -56,9 +56,6 @@ public class GetCacheBundleSizeOperation : GameAsyncOperation
             _steps = ESteps.Done;
             Status = EOperationStatus.Succeed;
         }
-    }
-    protected override void OnAbort()
-    {
     }
 
     private string GetCacheDirectoryRoot()

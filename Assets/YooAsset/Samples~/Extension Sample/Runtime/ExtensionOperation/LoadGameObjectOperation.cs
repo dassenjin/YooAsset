@@ -9,12 +9,12 @@ public static class YooAssetsExtension
     public static LoadGameObjectOperation LoadGameObjectAsync(this ResourcePackage resourcePackage, string location, Vector3 position, Quaternion rotation, Transform parent, bool destroyGoOnRelease = false)
     {
         var operation = new LoadGameObjectOperation(location, position, rotation, parent, destroyGoOnRelease);
-        YooAssets.StartOperation(operation);
+        OperationSystem.StartOperation(OperationSystem.GLOBAL_SCHEDULER_NAME, operation);
         return operation;
     }
 }
 
-public class LoadGameObjectOperation : GameAsyncOperation
+public class LoadGameObjectOperation : AsyncOperationBase
 {
     private enum ESteps
     {
@@ -36,7 +36,7 @@ public class LoadGameObjectOperation : GameAsyncOperation
     /// </summary>
     public GameObject Go { private set; get; }
 
-
+    
     public LoadGameObjectOperation(string location, Vector3 position, Quaternion rotation, Transform parent, bool destroyGoOnRelease = false)
     {
         _location = location;
@@ -45,11 +45,11 @@ public class LoadGameObjectOperation : GameAsyncOperation
         _parent = parent;
         _destroyGoOnRelease = destroyGoOnRelease;
     }
-    protected override void OnStart()
+    internal override void InternalStart()
     {
         _steps = ESteps.LoadAsset;
     }
-    protected override void OnUpdate()
+    internal override void InternalUpdate()
     {
         if (_steps == ESteps.None || _steps == ESteps.Done)
             return;
@@ -78,9 +78,6 @@ public class LoadGameObjectOperation : GameAsyncOperation
                 _steps = ESteps.Done;
             }
         }
-    }
-    protected override void OnAbort()
-    {
     }
 
     /// <summary>

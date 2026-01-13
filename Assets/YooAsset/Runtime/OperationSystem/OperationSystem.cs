@@ -26,11 +26,26 @@ namespace YooAsset
         // 计时器相关
         private static Stopwatch _watch;
         private static long _frameTime;
+        private static long _maxTimeSlice = long.MaxValue;
 
         /// <summary>
         /// 异步操作系统的每帧最大执行预算（毫秒）
         /// </summary>
-        public static long MaxTimeSlice { set; get; } = long.MaxValue;
+        public static long MaxTimeSlice
+        {
+            set
+            {
+                if (value < 10)
+                {
+                    _maxTimeSlice = 10;
+                    YooLogger.Warning($"MaxTimeSlice minimum value is 10 milliseconds.");
+                }
+                else
+                {
+                    _maxTimeSlice = value;
+                }
+            }
+        }
 
         /// <summary>
         /// 异步操作系统是否繁忙
@@ -42,11 +57,11 @@ namespace YooAsset
                 if (_watch == null)
                     return false;
 
-                if (MaxTimeSlice == long.MaxValue)
+                if (_maxTimeSlice == long.MaxValue)
                     return false;
 
                 // 注意 : 单次调用开销约1微秒
-                return _watch.ElapsedMilliseconds - _frameTime >= MaxTimeSlice;
+                return _watch.ElapsedMilliseconds - _frameTime >= _maxTimeSlice;
             }
         }
 

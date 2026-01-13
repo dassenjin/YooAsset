@@ -7,7 +7,7 @@ using YooAsset;
 /// <summary>
 /// 拷贝内置清单文件到沙盒目录
 /// </summary>
-public class CopyBuildinManifestOperation : GameAsyncOperation
+public class CopyBuildinManifestOperation : AsyncOperationBase
 {
     private enum ESteps
     {
@@ -32,11 +32,11 @@ public class CopyBuildinManifestOperation : GameAsyncOperation
         _packageVersion = packageVersion;
         _backend = new UnityWebRequestBackend();
     }
-    protected override void OnStart()
+    internal override void InternalStart()
     {
         _steps = ESteps.CheckHashFile;
     }
-    protected override void OnUpdate()
+    internal override void InternalUpdate()
     {
         if (_steps == ESteps.None || _steps == ESteps.Done)
             return;
@@ -120,9 +120,6 @@ public class CopyBuildinManifestOperation : GameAsyncOperation
                 Error = _manifestFileRequestOp.Error;
             }
         }
-    }
-    protected override void OnAbort()
-    {
     }
 
     private string GetBuildinYooRoot()

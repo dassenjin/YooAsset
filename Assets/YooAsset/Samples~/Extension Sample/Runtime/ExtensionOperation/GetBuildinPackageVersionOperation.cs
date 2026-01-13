@@ -7,7 +7,7 @@ using YooAsset;
 /// <summary>
 /// 获取包体里的内置资源清单版本
 /// </summary>
-public class GetBuildinPackageVersionOperation : GameAsyncOperation
+public class GetBuildinPackageVersionOperation : AsyncOperationBase
 {
     private enum ESteps
     {
@@ -31,11 +31,11 @@ public class GetBuildinPackageVersionOperation : GameAsyncOperation
         _packageName = packageName;
         _backend = new UnityWebRequestBackend();
     }
-    protected override void OnStart()
+    internal override void InternalStart()
     {
         _steps = ESteps.GetPackageVersion;
     }
-    protected override void OnUpdate()
+    internal override void InternalUpdate()
     {
         if (_steps == ESteps.None || _steps == ESteps.Done)
             return;
@@ -67,9 +67,6 @@ public class GetBuildinPackageVersionOperation : GameAsyncOperation
                 Error = _versionFileRequestOp.Error;
             }
         }
-    }
-    protected override void OnAbort()
-    {
     }
 
     private string GetBuildinYooRoot()

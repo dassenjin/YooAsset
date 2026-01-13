@@ -207,17 +207,6 @@ namespace YooAsset
             return package != null;
         }
 
-        /// <summary>
-        /// 开启一个异步操作
-        /// </summary>
-        /// <param name="operation">异步操作对象</param>
-        public static void StartOperation(GameAsyncOperation operation)
-        {
-            // 注意：游戏业务逻辑的包裹填写为空
-            OperationSystem.StartOperation(OperationSystem.GLOBAL_SCHEDULER_NAME, operation);
-        }
-
-
         private static ResourcePackage GetPackageInternal(string packageName)
         {
             foreach (var package in _packages)
@@ -259,11 +248,6 @@ namespace YooAsset
         /// </summary>
         public static void SetOperationSystemMaxTimeSlice(long milliseconds)
         {
-            if (milliseconds < 10)
-            {
-                milliseconds = 10;
-                YooLogger.Warning($"MaxTimeSlice minimum value is 10 milliseconds.");
-            }
             OperationSystem.MaxTimeSlice = milliseconds;
         }
         #endregion

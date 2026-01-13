@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using YooAsset;
 
-public class LoadAssetsByTagOperation<TObject> : GameAsyncOperation where TObject : UnityEngine.Object
+public class LoadAssetsByTagOperation<TObject> : AsyncOperationBase where TObject : UnityEngine.Object
 {
     private enum ESteps
     {
@@ -28,11 +28,11 @@ public class LoadAssetsByTagOperation<TObject> : GameAsyncOperation where TObjec
     {
         _tag = tag;
     }
-    protected override void OnStart()
+    internal override void InternalStart()
     {
         _steps = ESteps.LoadAssets;
     }
-    protected override void OnUpdate()
+    internal override void InternalUpdate()
     {
         if (_steps == ESteps.None || _steps == ESteps.Done)
             return;
@@ -53,7 +53,7 @@ public class LoadAssetsByTagOperation<TObject> : GameAsyncOperation where TObjec
         {
             int index = 0;
             foreach (var handle in _handles)
-            {			
+            {
                 if (handle.IsDone == false)
                 {
                     Progress = (float)index / _handles.Count;
@@ -77,7 +77,7 @@ public class LoadAssetsByTagOperation<TObject> : GameAsyncOperation where TObjec
                         string error = $"资源类型转换失败：{handle.AssetObject.name}";
                         Debug.LogError($"{error}");
                         AssetObjects.Clear();
-                        SetFinish(false, error);
+                        SetFailed(error);
                         return;
                     }
                 }
@@ -85,21 +85,23 @@ public class LoadAssetsByTagOperation<TObject> : GameAsyncOperation where TObjec
                 {
                     Debug.LogError($"{handle.LastError}");
                     AssetObjects.Clear();
-                    SetFinish(false, handle.LastError);
+                    SetFailed(handle.LastError);
                     return;
                 }
             }
 
-            SetFinish(true);
+            SetSucceed();
         }
     }
-    protected override void OnAbort()
+    private void SetSucceed()
     {
+        Status = EOperationStatus.Succeed;
+        _steps = ESteps.Done;
     }
-    private void SetFinish(bool succeed, string error = "")
+    private void SetFailed(string error)
     {
         Error = error;
-        Status = succeed ? EOperationStatus.Succeed : EOperationStatus.Failed;
+        Status = EOperationStatus.Failed;
         _steps = ESteps.Done;
     }
 

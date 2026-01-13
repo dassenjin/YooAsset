@@ -297,7 +297,7 @@ namespace YooAsset
 
                 try
                 {
-                    //TODO 单个回调异常会阻断后续回调
+                    //TODO 单个回调异常会阻断后续订阅者
                     _callback?.Invoke(this);
                 }
                 catch (Exception ex)
@@ -350,6 +350,7 @@ namespace YooAsset
 
         /// <summary>
         /// 无限次数的执行更新逻辑，直到任务完成
+        /// 注意：该方法会阻塞主线程
         /// </summary>
         /// <param name="sleepMS">休眠时长</param>
         protected void RunUntilCompletion(int sleepMS = 1)
@@ -482,6 +483,10 @@ namespace YooAsset
             return false;
         }
 
+        /// <summary>
+        /// 获取调试信息
+        /// 注意：递归构建子树存在深度风险
+        /// </summary>
         internal DebugOperationInfo GetDebugOperationInfo()
         {
             var operationInfo = new DebugOperationInfo();
