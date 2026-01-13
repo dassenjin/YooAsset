@@ -228,7 +228,18 @@ namespace YooAsset
                 DebugUpdateRecording();
 
                 // 更新任务
-                InternalUpdate();
+                // 注意：兜底隔离机制
+                // 说明：检测的异常源包含：I/O（解压/读写权限/磁盘满），平台差异等
+                try
+                {
+                    InternalUpdate();
+                }
+                catch (Exception ex)
+                {
+                    Status = EOperationStatus.Failed;
+                    Error = ex.ToString();
+                    YooLogger.Error($"Exception in {this.GetType().Name}.InternalUpdate : {ex}");
+                }
             }
 
             if (IsDone && IsFinish == false)
@@ -353,7 +364,6 @@ namespace YooAsset
         public void WaitForAsyncComplete()
         {
             //TODO 防止异步操作被挂起陷入无限死循环！
-            // 例如：文件解压任务或者文件导入任务！
             if (Status == EOperationStatus.None)
             {
                 StartOperation();

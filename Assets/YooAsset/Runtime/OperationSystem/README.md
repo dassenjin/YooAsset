@@ -227,16 +227,16 @@ public static void StartOperation(string packageName, AsyncOperationBase operati
 
 #### 回调监听
 
-```csharp
-/// <summary>
-/// 注册任务开始回调
-/// </summary>
-public static void RegisterStartCallback(Action<string, AsyncOperationBase> callback);
+OperationSystem **当前未提供**全局任务开始/结束回调的注册接口。
 
-/// <summary>
-/// 注册任务结束回调
-/// </summary>
-public static void RegisterFinishCallback(Action<string, AsyncOperationBase> callback);
+如需监听任务结束（推荐），请直接订阅具体任务的 `Completed` 事件：
+
+```csharp
+var operation = package.LoadAssetAsync<GameObject>(location);
+operation.Completed += op =>
+{
+    // TODO : 根据 op.Status 判断成功/失败
+};
 ```
 
 ---
@@ -515,4 +515,4 @@ IEnumerator + IComparable<AsyncOperationBase>
 4. **子任务中止**：父操作中止时会自动中止所有子操作
 5. **回调异常**：`Completed` 回调中的异常会被捕获并记录，不会中断系统
 6. **编辑器重置**：编辑器中使用 `RuntimeInitializeOnLoadMethod` 自动重置状态
-7. **循环保护**：在 `InternalWaitForAsyncComplete()` 中如果使用 `ExecuteWhileDone()`，内部默认有 1000 次执行保护，防止无限循环
+7. **循环保护**：在 `InternalWaitForAsyncComplete()` 中建议使用 `RunBatchExecution()`（默认 1000 次）限制单次推进次数，避免陷入无限循环或长时间占用主线程

@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace YooAsset
 {
-    internal class OperationSystem
+    internal static class OperationSystem
     {
 #if UNITY_EDITOR
         [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -57,11 +57,14 @@ namespace YooAsset
         /// </summary>
         public static void Initialize()
         {
-            _isInitialize = true;
-            _watch = Stopwatch.StartNew();
+            if (_isInitialize == false)
+            {
+                _isInitialize = true;
+                _watch = Stopwatch.StartNew();
 
-            // 创建全局调度器
-            CreatePackageScheduler(GLOBAL_SCHEDULER_NAME, 0);
+                // 创建全局调度器
+                CreatePackageScheduler(GLOBAL_SCHEDULER_NAME, int.MaxValue);
+            }
         }
 
         /// <summary>
@@ -97,6 +100,7 @@ namespace YooAsset
         /// </summary>
         public static void DestroyAll()
         {
+            _isInitialize = false;
             YooLogger.Log("Operation system destroy all !");
 
             // 清空所有调度器
@@ -108,7 +112,6 @@ namespace YooAsset
             _schedulerList.Clear();
             _schedulerListDirty = false;
             _createIndex = 0;
-            _isInitialize = false;
 
             _watch = null;
             _frameTime = 0;
@@ -120,6 +123,8 @@ namespace YooAsset
         /// </summary>
         public static void CreatePackageScheduler(string packageName, int priority)
         {
+            DebugCheckInitialize(packageName);
+
             if (_schedulerDic.ContainsKey(packageName))
             {
                 throw new YooInternalException($"Package scheduler already exists: {packageName}");
@@ -136,6 +141,8 @@ namespace YooAsset
         /// </summary>
         public static void DestroyPackageScheduler(string packageName)
         {
+            DebugCheckInitialize(packageName);
+
             // 不允许销毁默认调度器
             if (packageName == GLOBAL_SCHEDULER_NAME)
             {
@@ -155,6 +162,8 @@ namespace YooAsset
         /// </summary>
         public static void ClearPackageOperation(string packageName)
         {
+            DebugCheckInitialize(packageName);
+
             var scheduler = GetScheduler(packageName);
             scheduler.ClearAll();
         }
@@ -164,6 +173,8 @@ namespace YooAsset
         /// </summary>
         public static void StartOperation(string packageName, AsyncOperationBase operation)
         {
+            DebugCheckInitialize(packageName);
+
             var scheduler = GetScheduler(packageName);
             scheduler.StartOperation(operation);
         }
@@ -179,14 +190,28 @@ namespace YooAsset
             }
 
             // 严格模式：非默认包裹必须先创建调度器
-            throw new YooInternalException($"Operation scheduler not found: {packageName}. Please call YooAssets.CreatePackage() first!");
+            throw new YooInternalException($"Operation scheduler not found: {packageName}.");
         }
 
         #region 调试信息
         internal static List<DebugOperationInfo> GetDebugOperationInfos(string packageName)
         {
+            DebugCheckInitialize(packageName);
+
             var scheduler = GetScheduler(packageName);
             return scheduler.GetDebugOperationInfos();
+        }
+        #endregion
+
+        #region 调试方法
+        [Conditional("DEBUG")]
+        private static void DebugCheckInitialize(string packageName)
+        {
+            if (string.IsNullOrWhiteSpace(packageName))
+                throw new YooInternalException("Package name is null or empty.");
+
+            if (_isInitialize == false)
+                throw new YooInternalException($"{nameof(OperationSystem)} not initialized !");
         }
         #endregion
     }
